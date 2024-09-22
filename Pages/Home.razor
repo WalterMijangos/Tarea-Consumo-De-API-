@@ -1,0 +1,113 @@
+﻿@page "/"
+@using ApiPersonajes.Models
+@using Newtonsoft.Json
+@inject HttpClient client
+
+<PageTitle>Rick and Morty Characters</PageTitle>
+
+<h3>Rick and Morty Characters</h3
+
+
+
+	<div class="barra">
+		<input  type="text" class="form-control" @bind="buscar" placeholder="Buscar por nombre... " >
+		<button class="btn btn-outline-success my-2 my-sm-0" @onclick="Buscar" >Buscar</button>
+	</div>
+
+
+@if (characters is null)
+{
+	<p>Empty</p>
+}
+else if (characters.results.Count == 0)
+{
+	<p>No hay datos</p>
+}else
+{
+	<div class="row">
+		@foreach (var character in characters.results)
+		{
+			<div class="col mt-3">
+				<div class="card">
+					<img src="@character.image" class="card-img-top" alt="No image">
+
+					<div class="card-body">
+						<p class="card-text"><strong>@character.name</strong></p>
+						<p class="card-text"><strong>Origen:</strong>@character.origin.name</p>
+						<p class ="card-text"><strong>Location:</strong>@character.location.name</p>
+					</div>
+				</div>
+			</div>
+		}
+	</div>
+
+	
+    <div class="pagination">
+        <button class="page-item @(Page == 1 ? " disabled " : "")" @onclick="@(() => OnPage(Page-1))">Previous</button>
+		<div style="text-align:center">
+			Page @Page of @characters.Info.pages
+			<strong>Items @(characters.results.Count * Page)</strong> of <strong>@(characters.Info.count)</strong>
+		</div>
+        <button class="page-item @(Page == characters.Info.pages ? " disabled " : "")" @onclick="@(() => OnPage(Page+1))">Next</button>
+    </div>
+}
+
+@code{
+
+	public Characters characters { get; set; } = null;
+
+	public int Page { get; set; }
+
+	public int Total { get; set; }
+
+	public string buscar { get; set; } = string.Empty;
+
+
+	protected override Task OnInitializedAsync()
+	{
+		Page = 1;
+
+		GetCharacters();
+		return base.OnInitializedAsync();
+	}
+
+	private void OnPage(int page)
+	{
+		Page = page;
+		GetCharacters();
+	}
+
+	private void Buscar()
+	{
+		Page = 1;
+		GetCharacters();
+	}
+
+	private async void GetCharacters()
+	{
+		try
+		{
+			 string url = string.IsNullOrEmpty(buscar)
+                ? $"https://rickandmortyapi.com/api/character?page={Page}"  
+                : $"https://rickandmortyapi.com/api/character?page={Page}&name={buscar}";
+
+			var response = await client.GetAsync(url);
+
+			if(response.IsSuccessStatusCode)
+			{
+				string responseBody = await response.Content.ReadAsStringAsync();
+
+				characters = JsonConvert.DeserializeObject<Characters>(responseBody);
+
+				Total = characters.Info.count;
+
+				StateHasChanged();
+			}
+		}
+		catch (Exception ex)
+		{
+			Total = 0;
+			Console.WriteLine(ex.Message);
+		}
+	}
+}
